@@ -23,6 +23,12 @@ export const COOKING_INSTRUCTION_SCHEMA = {
     frameId: {
       type: 'string',
       description: 'Optional frame ID for tracking'
+    },
+    priority: {
+      type: 'string',
+      enum: ['high', 'normal'],
+      default: 'normal',
+      description: 'Priority level for TTS handling'
     }
   },
   required: ['cue', 'confidence'],

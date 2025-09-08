@@ -65,6 +65,19 @@
         .stop-btn:hover {
             background: #D70015;
         }
+        .tts-btn {
+            background: #FF9500;
+            color: white;
+        }
+        .tts-btn:hover {
+            background: #E6850E;
+        }
+        .tts-btn.muted {
+            background: #8E8E93;
+        }
+        .tts-btn.muted:hover {
+            background: #6D6D70;
+        }
         .status {
             padding: 10px;
             border-radius: 6px;
@@ -126,7 +139,8 @@
         
         <div class="controls">
             <button id="startBtn" class="start-btn">Start Cooking Assistant</button>
-            <button id="stopBtn" class="stop-btn" disabled>Stop</button>
+            <button id="stopBtn" class="stop-btn" disabled style="display: none;">Stop</button>
+            <button id="ttsToggleBtn" class="tts-btn" disabled style="display: none;">🔊 TTS On</button>
         </div>
         
         <div id="status" class="status stopped">Ready to start</div>

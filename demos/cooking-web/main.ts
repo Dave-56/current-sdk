@@ -4,6 +4,7 @@ import { Current } from '@current/sdk';
 const video = document.getElementById('video') as HTMLVideoElement;
 const startBtn = document.getElementById('startBtn') as HTMLButtonElement;
 const stopBtn = document.getElementById('stopBtn') as HTMLButtonElement;
+const ttsToggleBtn = document.getElementById('ttsToggleBtn') as HTMLButtonElement;
 const status = document.getElementById('status') as HTMLDivElement;
 const instruction = document.getElementById('instruction') as HTMLDivElement;
 const instructionText = document.getElementById('instructionText') as HTMLSpanElement;
@@ -40,7 +41,7 @@ startBtn.addEventListener('click', async () => {
     session = await Current.start({
       provider: 'gemini',
       mode: 'cooking',
-      fps: 1,
+      fps: 2, // 2 FPS for faster testing
       tts: true
     });
     
@@ -79,7 +80,11 @@ startBtn.addEventListener('click', async () => {
     });
     
     startBtn.disabled = true;
+    startBtn.style.display = 'none';
     stopBtn.disabled = false;
+    stopBtn.style.display = 'inline-block';
+    ttsToggleBtn.disabled = false;
+    ttsToggleBtn.style.display = 'inline-block';
     
   } catch (error) {
     console.error('❌ Failed to start:', error);
@@ -99,7 +104,30 @@ stopBtn.addEventListener('click', () => {
   liveBadge.style.display = 'none';
   
   startBtn.disabled = false;
+  startBtn.style.display = 'inline-block';
   stopBtn.disabled = true;
+  stopBtn.style.display = 'none';
+  ttsToggleBtn.disabled = true;
+  ttsToggleBtn.style.display = 'none';
+});
+
+// Toggle TTS
+ttsToggleBtn.addEventListener('click', () => {
+  if (session) {
+    const isEnabled = session.isTTSEnabled();
+    session.setTTSEnabled(!isEnabled);
+    
+    // Update button appearance
+    if (!isEnabled) {
+      ttsToggleBtn.textContent = '🔊 TTS On';
+      ttsToggleBtn.classList.remove('muted');
+    } else {
+      ttsToggleBtn.textContent = '🔇 TTS Off';
+      ttsToggleBtn.classList.add('muted');
+    }
+    
+    console.log('🔊 TTS toggled:', !isEnabled);
+  }
 });
 
 // Initialize

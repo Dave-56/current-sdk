@@ -4,6 +4,7 @@ import { FrameSampler } from './sampler';
 import { Transport } from './transport';
 import { MetricsTracker, Metric } from './metrics';
 import { SchemaValidator, COOKING_INSTRUCTION_SCHEMA } from './schema';
+import { TTS } from './tts';
 
 export class Current {
   static async start(config: CurrentConfig): Promise<CurrentSession> {
@@ -51,6 +52,12 @@ export class CurrentSession {
   private isRunning = false;
   private metrics: MetricsTracker = new MetricsTracker();
   private schemaValidator!: SchemaValidator;
+  private tts: TTS | null = null;
+  private lastSpokenInstruction: string | null = null;
+  private lastLLMRequest: number = 0;
+  private minRequestInterval: number = 2000; // 2 seconds between requests
+  private responseTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private responseTTL: number = 10000; // 10 seconds cleanup
 
   setup(camera: CameraCapture, config: CurrentConfig): void {
     this.camera = camera;
@@ -59,6 +66,11 @@ export class CurrentSession {
     // Create schema validator - use custom schema if provided, otherwise use default
     const schema = config.schema || this.getDefaultSchema(config.mode);
     this.schemaValidator = new SchemaValidator(schema);
+    
+    // Create TTS if enabled
+    if (config.tts) {
+      this.tts = new TTS();
+    }
     
     // Create frame sampler
     this.sampler = new FrameSampler(config.fps || 1);
@@ -72,6 +84,35 @@ export class CurrentSession {
     if (this.camera) {
       this.camera.setVideoElement(videoElement);
     }
+  }
+
+  // Method to toggle TTS on/off
+  setTTSEnabled(enabled: boolean): void {
+    if (this.tts) {
+      this.tts.setEnabled(enabled);
+    }
+  }
+
+  // Method to check if TTS is enabled
+  isTTSEnabled(): boolean {
+    return this.tts ? this.tts.isEnabled() : false;
+  }
+
+  // Method to check if TTS is currently speaking
+  isTTSSpeaking(): boolean {
+    return this.tts ? this.tts.isSpeaking() : false;
+  }
+
+  // Method to set request throttling interval
+  setRequestThrottle(intervalMs: number): void {
+    this.minRequestInterval = intervalMs;
+    console.log(`[CURRENT] Request throttle set to ${intervalMs}ms`);
+  }
+
+  // Method to set response cleanup TTL
+  setResponseTTL(ttlMs: number): void {
+    this.responseTTL = ttlMs;
+    console.log(`[CURRENT] Response TTL set to ${ttlMs}ms`);
   }
 
   private async connectToGateway(): Promise<void> {
@@ -123,8 +164,16 @@ export class CurrentSession {
 
     this.sampler.start((frameData) => {
       if (this.transport && this.isRunning) {
+        // Check if enough time has passed since last request
+        const now = Date.now();
+        if (now - this.lastLLMRequest < this.minRequestInterval) {
+          console.log('[CURRENT] Request throttled - too soon since last request');
+          return;
+        }
+        
         // Record when frame is sent
         const frameId = this.metrics.recordFrameSent();
+        this.lastLLMRequest = now;
         
         // Send frame with ID for tracking
         this.transport.send(JSON.stringify({ frame: frameData, frameId }));
@@ -147,6 +196,19 @@ export class CurrentSession {
     if (data.frameId) {
       const latency = this.metrics.recordResponseReceived(data.frameId);
       console.log(`[CURRENT] Response latency: ${latency}ms`);
+      
+      // Clear any existing timeout for this frameId
+      if (this.responseTimeouts.has(data.frameId)) {
+        clearTimeout(this.responseTimeouts.get(data.frameId)!);
+      }
+      
+      // Set cleanup timeout for this response
+      const timeout = setTimeout(() => {
+        this.responseTimeouts.delete(data.frameId);
+        console.log(`[CURRENT] Cleaned up response for frameId: ${data.frameId}`);
+      }, this.responseTTL);
+      
+      this.responseTimeouts.set(data.frameId, timeout);
     }
     
     // Validate JSON against schema (if schema is provided)
@@ -165,6 +227,13 @@ export class CurrentSession {
       text: this.formatInstruction(data),
       timestamp: Date.now()
     };
+    
+    // Speak the instruction if TTS is enabled and instruction has changed
+    if (this.tts && instruction.text !== this.lastSpokenInstruction) {
+      const priority = data.priority || 'normal';
+      this.tts.speak(instruction.text, priority);
+      this.lastSpokenInstruction = instruction.text;
+    }
     
     this.emit('instruction', instruction);
   }
@@ -217,6 +286,20 @@ export class CurrentSession {
     
     // Stop metrics tracking
     this.metrics.stop();
+    
+    // Stop TTS
+    if (this.tts) {
+      this.tts.stop();
+    }
+    
+    // Reset last spoken instruction
+    this.lastSpokenInstruction = null;
+    
+    // Clear all response timeouts
+    this.responseTimeouts.forEach((timeout) => {
+      clearTimeout(timeout);
+    });
+    this.responseTimeouts.clear();
     
     if (this.sampler) {
       this.sampler.stop();
