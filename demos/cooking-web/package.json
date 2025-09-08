@@ -1,0 +1,26 @@
+{
+  "name": "cooking-web-demo",
+  "version": "0.1.0",
+  "description": "Current SDK Cooking Assistant Demo",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@current/sdk": "file:../../packages/sdk"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "current",
+    "demo",
+    "cooking",
+    "ai"
+  ],
+  "author": "Current Team",
+  "license": "MIT"
+}

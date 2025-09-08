@@ -1,0 +1,32 @@
+{
+  "name": "@current/sdk",
+  "version": "0.1.0",
+  "description": "Current SDK for real-time multimodal applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "ajv": "^8.12.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "keywords": [
+    "current",
+    "sdk",
+    "multimodal",
+    "camera",
+    "ai"
+  ],
+  "author": "Current Team",
+  "license": "MIT"
+}

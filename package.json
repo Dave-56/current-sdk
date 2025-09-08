@@ -1,0 +1,35 @@
+{
+  "name": "current",
+  "version": "0.1.0",
+  "description": "The Twilio for video+LLM - Turn any camera stream into structured JSON + speech",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "demos/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "clean": "rm -rf node_modules packages/*/node_modules demos/*/node_modules"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "keywords": [
+    "multimodal",
+    "ai",
+    "video",
+    "camera",
+    "llm",
+    "realtime",
+    "sdk"
+  ],
+  "author": "Current Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/current-ai/current.git"
+  }
+}
