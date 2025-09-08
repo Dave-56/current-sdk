@@ -37,6 +37,7 @@ export class Current {
 export interface CurrentConfig {
   provider: 'gemini' | 'openai';
   mode: 'cooking' | 'fitness';
+  schema?: any;  // Optional custom schema
   fps?: number;
   tts?: boolean;
 }
@@ -55,8 +56,8 @@ export class CurrentSession {
     this.camera = camera;
     this.config = config;
     
-    // Create schema validator based on mode
-    const schema = config.mode === 'cooking' ? COOKING_INSTRUCTION_SCHEMA : COOKING_INSTRUCTION_SCHEMA; // For now, use same schema
+    // Create schema validator - use custom schema if provided, otherwise use default
+    const schema = config.schema || this.getDefaultSchema(config.mode);
     this.schemaValidator = new SchemaValidator(schema);
     
     // Create frame sampler
@@ -148,8 +149,8 @@ export class CurrentSession {
       console.log(`[CURRENT] Response latency: ${latency}ms`);
     }
     
-    // Validate JSON against schema
-    if (!this.schemaValidator.validateData(data)) {
+    // Validate JSON against schema (if schema is provided)
+    if (this.schemaValidator && !this.schemaValidator.validateData(data)) {
       const errors = this.schemaValidator.getErrors();
       console.warn('[CURRENT] Invalid JSON received, dropping:', errors);
       this.emit('error', new Error(`Invalid JSON schema: ${errors.join(', ')}`));
@@ -166,6 +167,15 @@ export class CurrentSession {
     };
     
     this.emit('instruction', instruction);
+  }
+
+  private getDefaultSchema(mode: string): any {
+    // Return default schema based on mode
+    if (mode === 'cooking') {
+      return COOKING_INSTRUCTION_SCHEMA;
+    }
+    // For other modes, return null (no validation)
+    return null;
   }
 
   private formatInstruction(data: any): string {
