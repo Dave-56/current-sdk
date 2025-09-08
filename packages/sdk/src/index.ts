@@ -3,6 +3,7 @@ import { CameraCapture } from './camera';
 import { FrameSampler } from './sampler';
 import { Transport } from './transport';
 import { MetricsTracker, Metric } from './metrics';
+import { SchemaValidator, COOKING_INSTRUCTION_SCHEMA } from './schema';
 
 export class Current {
   static async start(config: CurrentConfig): Promise<CurrentSession> {
@@ -48,10 +49,15 @@ export class CurrentSession {
   private config: CurrentConfig | null = null;
   private isRunning = false;
   private metrics: MetricsTracker = new MetricsTracker();
+  private schemaValidator!: SchemaValidator;
 
   setup(camera: CameraCapture, config: CurrentConfig): void {
     this.camera = camera;
     this.config = config;
+    
+    // Create schema validator based on mode
+    const schema = config.mode === 'cooking' ? COOKING_INSTRUCTION_SCHEMA : COOKING_INSTRUCTION_SCHEMA; // For now, use same schema
+    this.schemaValidator = new SchemaValidator(schema);
     
     // Create frame sampler
     this.sampler = new FrameSampler(config.fps || 1);
@@ -141,6 +147,16 @@ export class CurrentSession {
       const latency = this.metrics.recordResponseReceived(data.frameId);
       console.log(`[CURRENT] Response latency: ${latency}ms`);
     }
+    
+    // Validate JSON against schema
+    if (!this.schemaValidator.validateData(data)) {
+      const errors = this.schemaValidator.getErrors();
+      console.warn('[CURRENT] Invalid JSON received, dropping:', errors);
+      this.emit('error', new Error(`Invalid JSON schema: ${errors.join(', ')}`));
+      return;
+    }
+    
+    console.log('[CURRENT] Valid JSON received:', data);
     
     // Convert JSON response to instruction message
     const instruction: InstructionMessage = {

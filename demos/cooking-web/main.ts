@@ -63,7 +63,14 @@ startBtn.addEventListener('click', async () => {
     
     session.on('error', (error: Error) => {
       console.error('❌ Error:', error);
-      updateStatus(`Error: ${error.message}`, 'stopped');
+      
+      // Handle validation errors differently
+      if (error.message.includes('Invalid JSON schema')) {
+        updateStatus('AI response invalid - retrying...', 'connecting');
+        console.warn('🔄 Validation failed, retrying...');
+      } else {
+        updateStatus(`Error: ${error.message}`, 'stopped');
+      }
     });
     
     session.on('metric', (metric: any) => {
