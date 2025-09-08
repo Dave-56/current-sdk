@@ -1,4 +1,4 @@
-// Cooking Assistant Demo
+// Current SDK Demo - Feature Showcase
 import { Current } from '@current/sdk';
 
 const video = document.getElementById('video') as HTMLVideoElement;
@@ -37,7 +37,6 @@ startBtn.addEventListener('click', async () => {
   try {
     updateStatus('Starting...', 'connecting');
     
-    // TODO: Replace with real Current.start() when implemented
     session = await Current.start({
       provider: 'gemini',
       mode: 'cooking',
@@ -45,18 +44,17 @@ startBtn.addEventListener('click', async () => {
       tts: true
     });
     
-    // Set up video stream
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
+    // Set the video element to display the camera stream
+    session.setVideoElement(video);
     
     // Set up event listeners
     session.on('instruction', (msg: any) => {
       showInstruction(msg.text, msg.json);
-      console.log('Instruction:', msg);
+      console.log('🤖 AI Instruction:', msg);
     });
     
     session.on('state', (state: string) => {
-      console.log('State changed:', state);
+      console.log('📊 State:', state);
       if (state === 'running') {
         updateStatus('Cooking Assistant Active', 'running');
         liveBadge.style.display = 'block';
@@ -64,19 +62,20 @@ startBtn.addEventListener('click', async () => {
     });
     
     session.on('error', (error: Error) => {
-      console.error('Error:', error);
+      console.error('❌ Error:', error);
       updateStatus(`Error: ${error.message}`, 'stopped');
     });
     
     session.on('metric', (metric: any) => {
-      console.log('Metrics:', metric);
+      console.log('📈 Metrics:', metric);
+      console.log(`FPS: ${metric.fps.toFixed(1)}, Latency: ${metric.latencyMs}ms`);
     });
     
     startBtn.disabled = true;
     stopBtn.disabled = false;
     
   } catch (error) {
-    console.error('Failed to start:', error);
+    console.error('❌ Failed to start:', error);
     updateStatus(`Failed to start: ${error}`, 'stopped');
   }
 });
@@ -86,13 +85,6 @@ stopBtn.addEventListener('click', () => {
   if (session) {
     session.stop();
     session = null;
-  }
-  
-  // Stop video stream
-  if (video.srcObject) {
-    const stream = video.srcObject as MediaStream;
-    stream.getTracks().forEach(track => track.stop());
-    video.srcObject = null;
   }
   
   updateStatus('Stopped', 'stopped');
