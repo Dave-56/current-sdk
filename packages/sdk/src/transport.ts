@@ -1,6 +1,6 @@
 // WebSocket client for communication with gateway
 export class Transport {
-  constructor(wsUrl: string) {
+  constructor(_wsUrl: string) {
     // TODO: Implement in Day 1
   }
   
@@ -9,11 +9,11 @@ export class Transport {
     throw new Error('Not implemented yet');
   }
   
-  send(frame: string): void {
+  send(_frame: string): void {
     // TODO: Implement in Day 1
   }
   
-  onMessage(callback: (data: any) => void): void {
+  onMessage(_callback: (data: any) => void): void {
     // TODO: Implement in Day 1
   }
   

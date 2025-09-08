@@ -4,7 +4,7 @@ export class TTS {
     // TODO: Implement in Day 2
   }
   
-  speak(text: string): void {
+  speak(_text: string): void {
     // TODO: Implement in Day 2
   }
   
@@ -12,7 +12,7 @@ export class TTS {
     // TODO: Implement in Day 2
   }
   
-  setEnabled(enabled: boolean): void {
+  setEnabled(_enabled: boolean): void {
     // TODO: Implement in Day 2
   }
 }

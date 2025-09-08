@@ -1,10 +1,10 @@
 // Frame sampling at 1 FPS
 export class FrameSampler {
-  constructor(fps: number = 1) {
+  constructor(_fps: number = 1) {
     // TODO: Implement in Day 1
   }
   
-  start(callback: (frame: string) => void): void {
+  start(_callback: (frame: string) => void): void {
     // TODO: Implement in Day 1
   }
   

@@ -28,7 +28,7 @@ wss.on('connection', (ws, req) => {
   // TODO: Implement in Day 1
   console.log('Client connected');
   
-  ws.on('message', (data) => {
+  ws.on('message', (_data) => {
     // TODO: Echo dummy JSON in Day 1
     const dummyResponse = {
       cue: 'stir_now',
