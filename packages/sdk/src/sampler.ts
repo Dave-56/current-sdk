@@ -36,19 +36,28 @@ export class FrameSampler {
   
   private captureFrame(): void {
     if (!this.video || !this.canvas || !this.ctx || !this.callback) {
+      console.log('[SAMPLER] Missing components for frame capture');
       return;
     }
     
     // Ensure video is ready
     if (this.video.readyState < 2) {
+      console.log('[SAMPLER] Video not ready, state:', this.video.readyState);
+      return;
+    }
+    
+    // Check video dimensions
+    if (this.video.videoWidth === 0 || this.video.videoHeight === 0) {
+      console.log('[SAMPLER] Video has no dimensions:', this.video.videoWidth, 'x', this.video.videoHeight);
       return;
     }
     
     // Draw current video frame to canvas
     this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
     
-    // Convert to base64 data URL
-    const frameData = this.canvas.toDataURL('image/jpeg', 0.8);
+    // Convert to base64 data URL with PNG for better quality
+    const frameData = this.canvas.toDataURL('image/png');
+    console.log('[SAMPLER] Captured frame, size:', frameData.length, 'bytes');
     this.callback(frameData);
   }
   

@@ -1,4 +1,4 @@
-// Current SDK Demo - Feature Showcase
+// Current SDK Demo - Emotion Detection Showcase
 import { Current } from '@current/sdk';
 
 const video = document.getElementById('video') as HTMLVideoElement;
@@ -13,6 +13,7 @@ const jsonText = document.getElementById('jsonText') as HTMLPreElement;
 const liveBadge = document.getElementById('liveBadge') as HTMLDivElement;
 
 let session: any = null;
+const SHOW_METRICS = false; // Set to true to see metrics logs
 
 // Update UI state
 function updateStatus(newStatus: string, className: string) {
@@ -33,16 +34,18 @@ function hideInstruction() {
   jsonOutput.style.display = 'none';
 }
 
-// Start cooking assistant
+// Start emotion detection
 startBtn.addEventListener('click', async () => {
   try {
     updateStatus('Starting...', 'connecting');
     
     session = await Current.start({
       provider: 'gemini',
-      mode: 'cooking',
+      mode: 'emotion',
+      apiKey: (import.meta as any).env.VITE_GOOGLE_AI_API_KEY || 'your_google_ai_api_key_here',
       fps: 2, // 2 FPS for faster testing
-      tts: true
+      tts: true,
+      emitMetrics: false // Set to true to see metrics and throttling logs
     });
     
     // Set the video element to display the camera stream
@@ -51,13 +54,13 @@ startBtn.addEventListener('click', async () => {
     // Set up event listeners
     session.on('instruction', (msg: any) => {
       showInstruction(msg.text, msg.json);
-      console.log('🤖 AI Instruction:', msg);
+      console.log('😊 Emotion Detected:', msg);
     });
     
     session.on('state', (state: string) => {
       console.log('📊 State:', state);
       if (state === 'running') {
-        updateStatus('Cooking Assistant Active', 'running');
+        updateStatus('Emotion Detection Active', 'running');
         liveBadge.style.display = 'block';
       }
     });
@@ -75,8 +78,10 @@ startBtn.addEventListener('click', async () => {
     });
     
     session.on('metric', (metric: any) => {
-      console.log('📈 Metrics:', metric);
-      console.log(`FPS: ${metric.fps.toFixed(1)}, Latency: ${metric.latencyMs}ms`);
+      if (SHOW_METRICS) {
+        console.log('📈 Metrics:', metric);
+        console.log(`FPS: ${metric.fps.toFixed(1)}, Latency: ${metric.latencyMs}ms`);
+      }
     });
     
     startBtn.disabled = true;
@@ -92,7 +97,7 @@ startBtn.addEventListener('click', async () => {
   }
 });
 
-// Stop cooking assistant
+// Stop emotion detection
 stopBtn.addEventListener('click', () => {
   if (session) {
     session.stop();

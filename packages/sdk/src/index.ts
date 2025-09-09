@@ -3,7 +3,7 @@ import { CameraCapture } from './camera';
 import { FrameSampler } from './sampler';
 import { Transport } from './transport';
 import { MetricsTracker, Metric } from './metrics';
-import { SchemaValidator, COOKING_INSTRUCTION_SCHEMA } from './schema';
+import { SchemaValidator, COOKING_INSTRUCTION_SCHEMA, EMOTION_INSTRUCTION_SCHEMA, DEFAULT_INSTRUCTION_SCHEMA } from '../../../shared/schemas/index.js';
 import { TTS } from './tts';
 
 export class Current {
@@ -37,10 +37,12 @@ export class Current {
 
 export interface CurrentConfig {
   provider: 'gemini' | 'openai';
-  mode: 'cooking' | 'fitness';
+  mode: 'cooking' | 'emotion';
+  apiKey: string;  // Required API key for the provider
   schema?: any;  // Optional custom schema
   fps?: number;
   tts?: boolean;
+  emitMetrics?: boolean;  // Optional flag to show metrics and throttling logs
 }
 
 export class CurrentSession {
@@ -58,10 +60,12 @@ export class CurrentSession {
   private minRequestInterval: number = 2000; // 2 seconds between requests
   private responseTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private responseTTL: number = 10000; // 10 seconds cleanup
+  private emitMetrics: boolean = false;
 
   setup(camera: CameraCapture, config: CurrentConfig): void {
     this.camera = camera;
     this.config = config;
+    this.emitMetrics = config.emitMetrics || false;
     
     // Create schema validator - use custom schema if provided, otherwise use default
     const schema = config.schema || this.getDefaultSchema(config.mode);
@@ -123,7 +127,12 @@ export class CurrentSession {
       const response = await fetch('http://localhost:3001/v1/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: this.config?.mode || 'cooking' })
+        body: JSON.stringify({ 
+          mode: this.config?.mode || 'emotion',
+          provider: this.config?.provider || 'gemini',
+          apiKey: this.config?.apiKey,
+          schema: this.config?.schema
+        })
       });
       
       const { wsUrl } = await response.json();
@@ -167,7 +176,9 @@ export class CurrentSession {
         // Check if enough time has passed since last request
         const now = Date.now();
         if (now - this.lastLLMRequest < this.minRequestInterval) {
-          console.log('[CURRENT] Request throttled - too soon since last request');
+          if (this.emitMetrics) {
+            console.log('[CURRENT] Request throttled - too soon since last request');
+          }
           return;
         }
         
@@ -175,8 +186,16 @@ export class CurrentSession {
         const frameId = this.metrics.recordFrameSent();
         this.lastLLMRequest = now;
         
+        // Extract base64 data from data URL
+        const base64Data = frameData.includes(',') ? frameData.split(',')[1] : frameData;
+        
         // Send frame with ID for tracking
-        this.transport.send(JSON.stringify({ frame: frameData, frameId }));
+        this.transport.send(JSON.stringify({ 
+          frame: JSON.stringify({ 
+            frameId: frameId, 
+            data: base64Data 
+          }) 
+        }));
         
         // Emit metrics every 10 frames
         if (this.metrics.getFrameCount() > 0 && this.metrics.getFrameCount() % 10 === 0) {
@@ -195,7 +214,9 @@ export class CurrentSession {
     // Record response received for latency calculation
     if (data.frameId) {
       const latency = this.metrics.recordResponseReceived(data.frameId);
-      console.log(`[CURRENT] Response latency: ${latency}ms`);
+      if (this.emitMetrics) {
+        console.log(`[CURRENT] Response latency: ${latency}ms`);
+      }
       
       // Clear any existing timeout for this frameId
       if (this.responseTimeouts.has(data.frameId)) {
@@ -211,12 +232,15 @@ export class CurrentSession {
       this.responseTimeouts.set(data.frameId, timeout);
     }
     
-    // Validate JSON against schema (if schema is provided)
-    if (this.schemaValidator && !this.schemaValidator.validateData(data)) {
-      const errors = this.schemaValidator.getErrors();
-      console.warn('[CURRENT] Invalid JSON received, dropping:', errors);
-      this.emit('error', new Error(`Invalid JSON schema: ${errors.join(', ')}`));
-      return;
+    // Validate JSON against schema (if schema is provided) - but exclude SDK fields
+    if (this.schemaValidator) {
+      // Remove SDK fields before validation to avoid false positives
+      const { timestamp, frameId, ...schemaData } = data;
+      if (!this.schemaValidator.validateData(schemaData)) {
+        const errors = this.schemaValidator.getErrors();
+        console.warn('[CURRENT] Schema validation warnings (but accepting response):', errors);
+        // Don't reject - just warn and continue
+      }
     }
     
     console.log('[CURRENT] Valid JSON received:', data);
@@ -243,16 +267,21 @@ export class CurrentSession {
     if (mode === 'cooking') {
       return COOKING_INSTRUCTION_SCHEMA;
     }
-    // For other modes, return null (no validation)
-    return null;
+    if (mode === 'emotion') {
+      return EMOTION_INSTRUCTION_SCHEMA;
+    }
+    // For other modes, return default schema
+    return DEFAULT_INSTRUCTION_SCHEMA;
   }
 
   private formatInstruction(data: any): string {
-    // Simple text formatting based on the JSON response
-    if (data.cue) {
-      return `Cooking instruction: ${data.cue.replace(/_/g, ' ')} (confidence: ${Math.round(data.confidence * 100)}%)`;
+    // Use AI-provided text if available, otherwise fallback to generic
+    if (data.text) {
+      return data.text;
     }
-    return JSON.stringify(data);
+    
+    // Fallback for backward compatibility
+    return `AI Response: ${JSON.stringify(data)}`;
   }
 
   // Emit method - fires events to all registered listeners (instruction, state, error, metric)

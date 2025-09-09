@@ -20,7 +20,16 @@ export class CameraCapture {
       this.video.style.display = 'none';
       document.body.appendChild(this.video);
       
-      return this.stream;
+      // Wait for video to be ready
+      return new Promise((resolve, reject) => {
+        this.video!.onloadedmetadata = () => {
+          console.log('[CAMERA] Video ready for frame capture');
+          resolve(this.stream!);
+        };
+        this.video!.onerror = (error) => {
+          reject(new Error(`Video setup failed: ${error}`));
+        };
+      });
     } catch (error) {
       throw new Error(`Camera access failed: ${error}`);
     }

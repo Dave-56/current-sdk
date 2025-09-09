@@ -1,7 +1,7 @@
 {
-  "name": "cooking-web-demo",
+  "name": "emotion-web-demo",
   "version": "0.1.0",
-  "description": "Current SDK Cooking Assistant Demo",
+  "description": "Current SDK Emotion Detection Demo",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,7 +18,8 @@
   "keywords": [
     "current",
     "demo",
-    "cooking",
+    "emotion",
+    "facial-expression",
     "ai"
   ],
   "author": "Current Team",
