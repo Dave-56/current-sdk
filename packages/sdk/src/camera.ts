@@ -17,18 +17,31 @@ export class CameraCapture {
       this.video.srcObject = this.stream;
       this.video.autoplay = true;
       this.video.muted = true;
+      this.video.playsInline = true;
       this.video.style.display = 'none';
       document.body.appendChild(this.video);
+      
+      // Ensure video starts playing
+      this.video.play().catch(error => {
+        console.warn('[CAMERA] Video play failed:', error);
+      });
       
       // Wait for video to be ready
       return new Promise((resolve, reject) => {
         this.video!.onloadedmetadata = () => {
-          console.log('[CAMERA] Video ready for frame capture');
           resolve(this.stream!);
         };
         this.video!.onerror = (error) => {
+          console.error('[CAMERA] Video error:', error);
           reject(new Error(`Video setup failed: ${error}`));
         };
+        
+        // Add timeout to detect if video never loads
+        setTimeout(() => {
+          if (this.video!.readyState < 2) {
+            resolve(this.stream!);
+          }
+        }, 3000);
       });
     } catch (error) {
       throw new Error(`Camera access failed: ${error}`);

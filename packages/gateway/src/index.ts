@@ -17,6 +17,8 @@ const emitMetrics = process.argv.includes('--emit-metrics');
 let aiService: any;
 let currentMode: string;
 let currentSchema: any;
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 12000; // 12 seconds between requests to stay within quota
 
 app.use(cors());
 app.use(express.json());
@@ -27,7 +29,13 @@ const server = app.listen(PORT, () => {
 });
 
 // WebSocket server on same port as HTTP server
-const wss = new WebSocketServer({ server, path: '/v1/stream' });
+const wss = new WebSocketServer({ 
+  server, 
+  path: '/v1/stream',
+  // Configure timeouts to prevent premature disconnections
+  perMessageDeflate: false,
+  maxPayload: 16 * 1024 * 1024 // 16MB max payload
+});
 
 // Create session endpoint
 app.post('/v1/session', (req, res) => {
@@ -41,6 +49,8 @@ app.post('/v1/session', (req, res) => {
   const wsUrl = `ws://localhost:${PORT}/v1/stream?sessionId=${sessionId}`;
   
   try {
+    console.log(`Creating session: provider=${provider}, mode=${mode}, apiKey length=${apiKey?.length || 0}`);
+    
     // Create/update AI service (MVP: single instance)
     aiService = AIServiceFactory.create(provider, apiKey);
     currentMode = mode;
@@ -61,9 +71,30 @@ wss.on('connection', (ws) => {
     console.log('Client connected to WebSocket');
   }
   
+  // Check if AI service is available
+  if (!aiService) {
+    console.warn('WebSocket connected but no AI service available yet');
+  }
+  
+  // Set up keepalive for this connection
+  const keepAliveInterval = setInterval(() => {
+    if (ws.readyState === ws.OPEN) {
+      ws.ping();
+    } else {
+      clearInterval(keepAliveInterval);
+    }
+  }, 30000); // Send ping every 30 seconds
+  
   ws.on('message', async (data) => {
     try {
       const message = JSON.parse(data.toString());
+      
+      // Handle ping messages
+      if (message.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+        return;
+      }
+      
       let frameData;
       let frameId;
       let imageData;
@@ -78,10 +109,19 @@ wss.on('connection', (ws) => {
         return;
       }
       
-      // Only analyze every 4th frame to avoid rate limiting
-      if (frameId && parseInt(frameId) % 4 === 0) {
+      // Only analyze every 2nd frame to avoid rate limiting (better for emotion detection)
+      if (frameId && parseInt(frameId) % 2 === 0) {
         if (!aiService) {
-          console.error('No AI service available');
+          console.error('No AI service available - session may not be created yet');
+          // Send a fallback response to keep the connection alive
+          const fallbackResponse = {
+            emotion: "neutral",
+            confidence: 0.1,
+            text: "AI service not ready",
+            timestamp: Date.now(),
+            frameId: frameId.toString()
+          };
+          ws.send(JSON.stringify(fallbackResponse));
           return;
         }
         
@@ -90,6 +130,26 @@ wss.on('connection', (ws) => {
         }
         
         try {
+          // Rate limiting: Check if enough time has passed since last request
+          const now = Date.now();
+          const timeSinceLastRequest = now - lastRequestTime;
+          
+          if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+            console.log(`[RATE_LIMIT] Skipping request - only ${timeSinceLastRequest}ms since last request (need ${MIN_REQUEST_INTERVAL}ms)`);
+            
+            // Send a rate-limited response
+            const rateLimitResponse = {
+              action: 'wait',
+              confidence: 0.1,
+              text: 'Rate limited - please wait',
+              timestamp: now,
+              frameId: frameId.toString()
+            };
+            ws.send(JSON.stringify(rateLimitResponse));
+            return;
+          }
+          
+          lastRequestTime = now;
           const aiResponse = await aiService.analyzeVideoStream(imageData, currentMode, currentSchema);
           
           const response = {
@@ -143,13 +203,13 @@ wss.on('connection', (ws) => {
     }
   });
   
-  ws.on('close', () => {
-    if (emitMetrics) {
-      console.log('Client disconnected from WebSocket');
-    }
+  ws.on('close', (code, reason) => {
+    clearInterval(keepAliveInterval);
+    console.log('Client disconnected from WebSocket', code, reason.toString());
   });
   
   ws.on('error', (error) => {
     console.error('WebSocket error:', error);
+    clearInterval(keepAliveInterval);
   });
 });

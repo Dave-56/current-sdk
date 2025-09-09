@@ -15,6 +15,7 @@ const liveBadge = document.getElementById('liveBadge') as HTMLDivElement;
 let session: any = null;
 const SHOW_METRICS = false; // Set to true to see metrics logs
 
+
 // Update UI state
 function updateStatus(newStatus: string, className: string) {
   status.textContent = newStatus;
@@ -43,13 +44,14 @@ startBtn.addEventListener('click', async () => {
       provider: 'gemini',
       mode: 'emotion',
       apiKey: (import.meta as any).env.VITE_GOOGLE_AI_API_KEY || 'your_google_ai_api_key_here',
-      fps: 2, // 2 FPS for faster testing
+      fps: 0.5, // 0.5 FPS to stay within API quota limits
       tts: true,
       emitMetrics: false // Set to true to see metrics and throttling logs
     });
     
     // Set the video element to display the camera stream
     session.setVideoElement(video);
+    
     
     // Set up event listeners
     session.on('instruction', (msg: any) => {

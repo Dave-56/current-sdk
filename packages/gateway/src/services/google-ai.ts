@@ -34,8 +34,20 @@ export class GoogleAIService implements AIService {
       // Get the schema to use for parsing
       const schema = customSchema || this.getDefaultSchemaForMode(mode);
       return this.parseResponse(text, schema);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google AI analysis error:', error);
+      
+      // Handle specific quota exceeded error
+      if (error.status === 429) {
+        console.warn('[GOOGLE_AI] Rate limit exceeded, skipping this request');
+        return {
+          action: 'wait',
+          confidence: 0.1,
+          text: 'Rate limit exceeded - please wait',
+          timestamp: Date.now()
+        };
+      }
+      
       return this.getFallbackResponse();
     }
   }

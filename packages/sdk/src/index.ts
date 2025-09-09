@@ -57,7 +57,7 @@ export class CurrentSession {
   private tts: TTS | null = null;
   private lastSpokenInstruction: string | null = null;
   private lastLLMRequest: number = 0;
-  private minRequestInterval: number = 2000; // 2 seconds between requests
+  private minRequestInterval: number = 1000; // 1 second between requests for better emotion detection
   private responseTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private responseTTL: number = 10000; // 10 seconds cleanup
   private emitMetrics: boolean = false;
@@ -119,6 +119,7 @@ export class CurrentSession {
     console.log(`[CURRENT] Response TTL set to ${ttlMs}ms`);
   }
 
+
   private async connectToGateway(): Promise<void> {
     try {
       this.emit('state', 'connecting');
@@ -135,7 +136,13 @@ export class CurrentSession {
         })
       });
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Session creation failed: ${response.status} ${errorData.error || response.statusText}`);
+      }
+      
       const { wsUrl } = await response.json();
+      console.log('[CURRENT] Session created successfully, WebSocket URL:', wsUrl);
       
       // Create WebSocket transport
       this.transport = new Transport(wsUrl);
@@ -143,11 +150,18 @@ export class CurrentSession {
       
       // Set up message handling
       this.transport.onMessage((data) => {
+        // Handle pong responses
+        if (data.type === 'pong') {
+          console.log('[CURRENT] Received pong from server');
+          return;
+        }
         this.handleInstruction(data);
       });
       
-      // Start frame sampling
+    // Start frame sampling with a delay to ensure session and video are ready
+    setTimeout(() => {
       this.startSampling();
+    }, 2000); // Increased delay to ensure session is established
       
       this.emit('state', 'running');
       this.isRunning = true;
