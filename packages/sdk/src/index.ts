@@ -57,7 +57,7 @@ export class CurrentSession {
   private tts: TTS | null = null;
   private lastSpokenInstruction: string | null = null;
   private lastLLMRequest: number = 0;
-  private minRequestInterval: number = 1000; // 1 second between requests for better emotion detection
+  private minRequestInterval: number = 5000; // 5 seconds between requests to match gateway rate limiting
   private responseTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private responseTTL: number = 10000; // 10 seconds cleanup
   private emitMetrics: boolean = false;
@@ -155,6 +155,13 @@ export class CurrentSession {
           console.log('[CURRENT] Received pong from server');
           return;
         }
+        
+        // Handle throttle events separately
+        if (data.type === 'throttle') {
+          this.handleThrottle(data);
+          return;
+        }
+        
         this.handleInstruction(data);
       });
       
@@ -274,6 +281,22 @@ export class CurrentSession {
     }
     
     this.emit('instruction', instruction);
+  }
+
+  private handleThrottle(data: any): void {
+    // Log throttle event for debugging (no TTS, no UI display)
+    if (this.emitMetrics) {
+      console.log(`[CURRENT] Throttled: ${data.message} (${data.timeSinceLastRequest}ms/${data.requiredInterval}ms)`);
+    }
+    
+    // Emit throttle event for telemetry
+    this.emit('throttle', {
+      message: data.message,
+      timestamp: data.timestamp,
+      frameId: data.frameId,
+      timeSinceLastRequest: data.timeSinceLastRequest,
+      requiredInterval: data.requiredInterval
+    });
   }
 
   private getDefaultSchema(mode: string): any {

@@ -6,7 +6,7 @@
 
 **What we ARE building:**
 - Camera → Frame → Gemini Live → JSON + TTS
-- One demo app (cooking assistant)
+- Two demo apps (emotion assistant, tennis coach)
 - Basic TypeScript SDK
 - NPM package
 
@@ -65,7 +65,7 @@
 - Timeouts/backoff if provider is slow; drop frames (don't backlog)
 - Demo UI: toast with msg.text, a small "Live" badge
 - Record 30–60s demo video; finalize README; deploy demo (Vercel/Netlify)
-- Add mode presets: "cooking" & "fitness" (same schema, different cue words)
+- Add mode presets: "tennis" & "basketball" (same schema, different cue words)
 
 **Acceptance**
 - Live demo runs for 2–3 minutes without freeze

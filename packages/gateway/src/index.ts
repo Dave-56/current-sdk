@@ -18,7 +18,7 @@ let aiService: any;
 let currentMode: string;
 let currentSchema: any;
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 12000; // 12 seconds between requests to stay within quota
+const MIN_REQUEST_INTERVAL = 5000; // 5 seconds between requests to stay within quota
 
 app.use(cors());
 app.use(express.json());
@@ -109,8 +109,8 @@ wss.on('connection', (ws) => {
         return;
       }
       
-      // Only analyze every 2nd frame to avoid rate limiting (better for emotion detection)
-      if (frameId && parseInt(frameId) % 2 === 0) {
+      // Analyze every frame since rate limiting is now properly aligned
+      if (frameId) {
         if (!aiService) {
           console.error('No AI service available - session may not be created yet');
           // Send a fallback response to keep the connection alive
@@ -137,15 +137,16 @@ wss.on('connection', (ws) => {
           if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
             console.log(`[RATE_LIMIT] Skipping request - only ${timeSinceLastRequest}ms since last request (need ${MIN_REQUEST_INTERVAL}ms)`);
             
-            // Send a rate-limited response
-            const rateLimitResponse = {
-              action: 'wait',
-              confidence: 0.1,
-              text: 'Rate limited - please wait',
+            // Send throttle event instead of instruction
+            const throttleEvent = {
+              type: 'throttle',
+              message: 'Request throttled - too soon since last request',
               timestamp: now,
-              frameId: frameId.toString()
+              frameId: frameId.toString(),
+              timeSinceLastRequest: timeSinceLastRequest,
+              requiredInterval: MIN_REQUEST_INTERVAL
             };
-            ws.send(JSON.stringify(rateLimitResponse));
+            ws.send(JSON.stringify(throttleEvent));
             return;
           }
           

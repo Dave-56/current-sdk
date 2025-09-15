@@ -44,7 +44,7 @@ startBtn.addEventListener('click', async () => {
       provider: 'gemini',
       mode: 'emotion',
       apiKey: (import.meta as any).env.VITE_GOOGLE_AI_API_KEY || 'your_google_ai_api_key_here',
-      fps: 0.5, // 0.5 FPS to stay within API quota limits
+      fps: 0.2, // 0.2 FPS (every 5 seconds) to stay within API quota limits
       tts: true,
       emitMetrics: false // Set to true to see metrics and throttling logs
     });
@@ -83,6 +83,12 @@ startBtn.addEventListener('click', async () => {
       if (SHOW_METRICS) {
         console.log('📈 Metrics:', metric);
         console.log(`FPS: ${metric.fps.toFixed(1)}, Latency: ${metric.latencyMs}ms`);
+      }
+    });
+    
+    session.on('throttle', (throttle: any) => {
+      if (SHOW_METRICS) {
+        console.log('🚦 Throttled:', throttle.message);
       }
     });
     

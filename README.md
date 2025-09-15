@@ -19,36 +19,70 @@ No WebRTC/WebSocket/TTS/JSON plumbing—batteries-included.
 - **SDK (Web)**: `start()`, `stop()`, `on("instruction")`, `on("error")`, `on("state")`
 - **Structured JSON** back from the model (schema-validated)
 - **Optional TTS** (speak instructions)
+- **Intelligent State Management** (remembers context across frames)
+- **Pre-built Modes** (emotion detection, cooking assistant)
+- **Custom Extensibility** (build your own visual agents)
 - **Basic observability** (console logs: fps, latency, errors)
 - **Demo app**: "AI Emotion Detection" (camera on → JSON emotion → spoken feedback)
 
 ## 🚀 Quickstart (dev UX)
 
+### **Basic Usage (Pre-built Modes)**
+
 ```javascript
 import { Current } from "@current/sdk";
 
-// 1) Start session
+// 1) Start session with intelligent state management
 const session = await Current.start({
   provider: "gemini",   // or "openai"
-  mode: "emotion",      // prompt preset
+  mode: "emotion",      // or "cooking"
   apiKey: "your_google_ai_api_key_here", // Get from https://aistudio.google.com/
-  fps: 1,
+  fps: 0.2, // Every 5 seconds to stay within API limits
   tts: true,            // optional speech out
+  stateManagement: true // Enable intelligent state tracking
 });
 
-// 2) React to emotions
+// 2) React to intelligent responses
 session.on("instruction", (msg) => {
-  // Machine-usable JSON
+  // Machine-usable JSON with state context
   console.log(msg.json);  // e.g., { emotion: "happy", confidence: 0.87 }
+  console.log(msg.state); // e.g., "sustained_happy"
+  console.log(msg.context); // e.g., { duration: 15000, count: 3, isNew: false }
+  
   // Human-friendly text
-  ui.show(msg.text);      // "You look happy!"
+  ui.show(msg.text);      // "You've been consistently happy for 15 seconds!"
 });
 
 // 3) Stop when done
 session.stop();
 ```
 
-**That's it.** Current handles camera permission, frame sampling, background send, JSON parsing, and (optionally) TTS.
+### **Advanced Usage (Custom Visual Agents)**
+
+```javascript
+// Build your own visual agent (e.g., tennis coach)
+class TennisStateMachine extends BaseStateMachine {
+  processInstruction(aiResponse) {
+    // Tennis-specific state logic
+    const context = this.addBasicContext(aiResponse);
+    context.metadata = {
+      shot_type: aiResponse.shot_type,
+      form_quality: aiResponse.form_quality,
+      swing_phase: this.currentState
+    };
+    return { ...aiResponse, state: this.currentState, context };
+  }
+}
+
+// Use custom state machine
+const tennisSession = await Current.start({
+  mode: "custom",
+  stateManagement: true,
+  customStateMachine: new TennisStateMachine()
+});
+```
+
+**That's it.** Current handles camera permission, frame sampling, background send, JSON parsing, intelligent state management, and (optionally) TTS.
 
 ## 🔧 Debugging & Metrics
 
@@ -74,11 +108,11 @@ const session = await Current.start({
 ```
 
 **What you'll see with metrics enabled:**
-- `[CURRENT] Request throttled - too soon since last request`
+- `[CURRENT] Request throttled - too soon since last request` (now every 5 seconds)
 - `[CURRENT] Response latency: 450ms`
 - `[CURRENT] Client connected to WebSocket`
 - `[CURRENT] Skipping frame: 5`
-- `📈 Metrics: {fps: 0.5, latencyMs: 4500.6}`
+- `📈 Metrics: {fps: 0.2, latencyMs: 4500.6}`
 
 ## 🎬 Demo Setup
 
@@ -91,10 +125,30 @@ To run the emotion detection demo:
 
 ## 📡 Event Catalog (MVP)
 
-- **`instruction`** → `{ json, text, timestamp }`
+- **`instruction`** → `{ json, text, timestamp, state, context }` (with state management)
 - **`state`** → `"connecting" | "running" | "speaking" | "stopped"`
 - **`error`** → `{ code, message }`
 - **`metric`** (optional dev flag) → `{ fps, latencyMs }` (console only for MVP)
+
+### **Enhanced Instruction Object (with State Management)**
+
+```javascript
+{
+  json: { emotion: "happy", confidence: 0.87 },  // Original AI response
+  text: "You've been consistently happy for 15 seconds!",  // Human-readable text
+  timestamp: 1703123456789,  // When received
+  state: "sustained_happy",  // Current state (NEW)
+  context: {  // State context (NEW)
+    duration: 15000,  // How long in current state
+    count: 3,  // How many times this instruction repeated
+    isNew: false,  // Is this a new instruction?
+    metadata: {  // Mode-specific data
+      trend: "positive",
+      intensity: "medium"
+    }
+  }
+}
+```
 
 ## 📋 JSON Schema (MVP "emotion" preset)
 
@@ -188,11 +242,13 @@ Gateway streams back model messages → SDK parses to instruction
 1. Show 10 lines of app code (Quickstart)
 2. Click "Start": camera turns on
 3. Make different facial expressions → console shows JSON + UI shows spoken emotion
-4. "Same SDK powers accessibility/social robots/wellness. Camera in → JSON out."
+4. **NEW**: Show intelligent state management - "You've been consistently happy for 15 seconds!"
+5. **NEW**: Show custom visual agent example - tennis coach with custom state machine
+6. "Same SDK powers accessibility/social robots/wellness. Camera in → intelligent JSON out."
 
 ## 🤝 Contributing
 
-We're building this in public! Check out our [implementation plan](./IMPLEMENTATION.md) and join the conversation.
+We're building this in public! Check out our [implementation plan](./IMPLEMENTATION.md) and [state machine implementation](./STATE_MACHINE_IMPLEMENTATION.md) and join the conversation.
 
 ## 📄 License
 
