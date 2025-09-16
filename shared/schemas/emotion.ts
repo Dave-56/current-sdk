@@ -48,7 +48,7 @@ export const EMOTION_INSTRUCTION_SCHEMA = {
       description: 'Priority level for TTS handling (high = interrupts, normal = waits)'
     }
   },
-  required: ['emotion', 'confidence', 'text', 'emoji', 'intensity'],
+  required: ['emotion', 'confidence', 'text', 'emoji'],
   additionalProperties: false
 };
 
