@@ -57,7 +57,7 @@ export class CurrentSession {
   private tts: TTS | null = null;
   private lastSpokenInstruction: string | null = null;
   private lastLLMRequest: number = 0;
-  private minRequestInterval: number = 5000; // 5 seconds between requests to match gateway rate limiting
+  private minRequestInterval: number = 2000; // 2 seconds between requests for faster testing
   private responseTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private responseTTL: number = 10000; // 10 seconds cleanup
   private emitMetrics: boolean = false;
@@ -106,6 +106,7 @@ export class CurrentSession {
   isTTSSpeaking(): boolean {
     return this.tts ? this.tts.isSpeaking() : false;
   }
+
 
   // Method to set request throttling interval
   setRequestThrottle(intervalMs: number): void {
@@ -253,14 +254,19 @@ export class CurrentSession {
       this.responseTimeouts.set(data.frameId, timeout);
     }
     
-    // Validate JSON against schema (if schema is provided) - but exclude SDK fields
+    // Validate JSON against schema (if schema is provided) - but exclude SDK fields and telemetry messages
     if (this.schemaValidator) {
-      // Remove SDK fields before validation to avoid false positives
-      const { timestamp, frameId, ...schemaData } = data;
-      if (!this.schemaValidator.validateData(schemaData)) {
-        const errors = this.schemaValidator.getErrors();
-        console.warn('[CURRENT] Schema validation warnings (but accepting response):', errors);
-        // Don't reject - just warn and continue
+      // Skip validation for telemetry/fallback responses (they have 'action' field instead of 'emotion')
+      if (data.action === 'wait' && !data.emotion) {
+        console.log('[CURRENT] Skipping schema validation for telemetry message');
+      } else {
+        // Remove SDK fields before validation to avoid false positives
+        const { timestamp, frameId, ...schemaData } = data;
+        if (!this.schemaValidator.validateData(schemaData)) {
+          const errors = this.schemaValidator.getErrors();
+          console.warn('[CURRENT] Schema validation warnings (but accepting response):', errors);
+          // Don't reject - just warn and continue
+        }
       }
     }
     
@@ -272,6 +278,7 @@ export class CurrentSession {
       text: this.formatInstruction(data),
       timestamp: Date.now()
     };
+    
     
     // Speak the instruction if TTS is enabled and instruction has changed
     if (this.tts && instruction.text !== this.lastSpokenInstruction) {
@@ -312,9 +319,37 @@ export class CurrentSession {
   }
 
   private formatInstruction(data: any): string {
-    // Use AI-provided text if available, otherwise fallback to generic
+    // Use AI-provided text if available, otherwise create enhanced text with emoji
     if (data.text) {
       return data.text;
+    }
+    
+    // Enhanced text generation for emotion mode with emoji
+    if (data.emotion && data.emoji) {
+      const intensity = data.intensity || 'medium';
+      const confidence = data.confidence || 0.5;
+      
+      // Create more engaging TTS text with emoji
+      const emotionTexts = {
+        happy: `You're giving ${data.emoji} happy vibes right now!`,
+        sad: `I see some ${data.emoji} sadness in your expression`,
+        angry: `There's some ${data.emoji} intensity in your expression`,
+        surprised: `You look ${data.emoji} surprised!`,
+        fearful: `I detect some ${data.emoji} concern`,
+        disgusted: `There's some ${data.emoji} distaste showing`,
+        neutral: `You look ${data.emoji} neutral and focused`
+      };
+      
+      const baseText = emotionTexts[data.emotion as keyof typeof emotionTexts] || `You look ${data.emoji}`;
+      
+      // Add intensity context
+      if (intensity === 'high' && confidence > 0.8) {
+        return `${baseText} - quite strongly!`;
+      } else if (intensity === 'low') {
+        return `${baseText} - very subtly`;
+      }
+      
+      return baseText;
     }
     
     // Fallback for backward compatibility

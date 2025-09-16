@@ -105,6 +105,21 @@ export class GoogleAIService implements AIService {
       }
     }
     
+    // Special handling for emotion mode - enhance with emoji and intensity
+    if (result.emotion && !result.emoji) {
+      result.emoji = this.getEmojiForEmotion(result.emotion);
+    }
+    
+    if (result.confidence && !result.intensity) {
+      result.intensity = this.getIntensityFromConfidence(result.confidence);
+    }
+    
+    // Add emoji size recommendation to context
+    if (result.intensity && !result.context?.emojiSize) {
+      result.context = result.context || {};
+      result.context.emojiSize = this.getEmojiSizeFromIntensity(result.intensity);
+    }
+    
     return result;
   }
 
@@ -155,6 +170,34 @@ export class GoogleAIService implements AIService {
   private getDefaultSchemaForMode(mode: string): any {
     // Reuse PromptManager's schema selection logic
     return PromptManager.getSchemaForMode(mode);
+  }
+
+  private getEmojiForEmotion(emotion: string): string {
+    const emojiMap: Record<string, string> = {
+      happy: '😊',
+      sad: '😢',
+      angry: '😠',
+      surprised: '😲',
+      fearful: '😨',
+      disgusted: '🤢',
+      neutral: '😐'
+    };
+    return emojiMap[emotion] || '😐';
+  }
+
+  private getIntensityFromConfidence(confidence: number): string {
+    if (confidence >= 0.7) return 'high';
+    if (confidence >= 0.4) return 'medium';
+    return 'low';
+  }
+
+  private getEmojiSizeFromIntensity(intensity: string): string {
+    const sizeMap: Record<string, string> = {
+      high: 'large',
+      medium: 'medium',
+      low: 'small'
+    };
+    return sizeMap[intensity] || 'medium';
   }
 
   private getFallbackResponse(): AIResponse {

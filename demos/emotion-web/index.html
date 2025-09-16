@@ -78,6 +78,19 @@
         .tts-btn.muted:hover {
             background: #6D6D70;
         }
+        .emoji-btn {
+            background: #34C759;
+            color: white;
+        }
+        .emoji-btn:hover {
+            background: #30B552;
+        }
+        .emoji-btn.muted {
+            background: #8E8E93;
+        }
+        .emoji-btn.muted:hover {
+            background: #6D6D70;
+        }
         .status {
             padding: 10px;
             border-radius: 6px;
@@ -142,6 +155,7 @@
             <button id="startBtn" class="start-btn">Start Emotion Detection</button>
             <button id="stopBtn" class="stop-btn" disabled style="display: none;">Stop</button>
             <button id="ttsToggleBtn" class="tts-btn" disabled style="display: none;">🔊 TTS On</button>
+            <button id="emojiToggleBtn" class="emoji-btn" disabled style="display: none;">😊 Emoji On</button>
         </div>
         
         <div id="status" class="status stopped">Ready to start</div>

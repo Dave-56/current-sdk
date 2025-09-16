@@ -18,7 +18,7 @@ let aiService: any;
 let currentMode: string;
 let currentSchema: any;
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 5000; // 5 seconds between requests to stay within quota
+const MIN_REQUEST_INTERVAL = 2000; // 2 seconds between requests for faster testing
 
 app.use(cors());
 app.use(express.json());

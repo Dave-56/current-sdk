@@ -17,4 +17,24 @@ EMOTION DETECTION RULES:
 - For subtle expressions, use medium confidence (0.4-0.7)
 - For unclear/ambiguous expressions, use low confidence (0.1-0.4)
 
+EMOJI ASSIGNMENT RULES:
+- happy → 😊
+- sad → 😢
+- angry → 😠
+- surprised → 😲
+- fearful → 😨
+- disgusted → 🤢
+- neutral → 😐
+
+INTENSITY MAPPING:
+- high confidence (0.7+) = high intensity
+- medium confidence (0.4-0.7) = medium intensity
+- low confidence (0.1-0.4) = low intensity
+
+TTS TEXT EXAMPLES:
+- "You're giving 😊 happy vibes right now!"
+- "I see some 😟 curious expressions"
+- "You look 😐 neutral and focused"
+- "There's some 😠 intensity in your expression"
+
 RESPOND WITH ONLY VALID JSON following the exact schema provided. No other text.`;

@@ -17,17 +17,26 @@ export const EMOTION_INSTRUCTION_SCHEMA = {
       type: 'string',
       description: 'Human-readable description of the detected emotion for TTS'
     },
+    emoji: {
+      type: 'string',
+      description: 'Emoji representation of the detected emotion for visual feedback'
+    },
+    intensity: {
+      type: 'string',
+      enum: ['low', 'medium', 'high'],
+      description: 'Intensity level of the detected emotion for emoji scaling'
+    },
     context: {
       type: 'object',
       properties: {
-        intensity: {
-          type: 'string',
-          enum: ['low', 'medium', 'high'],
-          description: 'Intensity level of the detected emotion'
-        },
         note: {
           type: 'string',
           description: 'Brief observation about the facial expression'
+        },
+        emojiSize: {
+          type: 'string',
+          enum: ['small', 'medium', 'large'],
+          description: 'Recommended emoji size based on confidence and intensity'
         }
       },
       additionalProperties: false
@@ -39,6 +48,24 @@ export const EMOTION_INSTRUCTION_SCHEMA = {
       description: 'Priority level for TTS handling (high = interrupts, normal = waits)'
     }
   },
-  required: ['emotion', 'confidence', 'text'],
+  required: ['emotion', 'confidence', 'text', 'emoji', 'intensity'],
   additionalProperties: false
 };
+
+// Emotion to emoji mapping for consistent visual feedback
+export const EMOTION_EMOJI_MAP = {
+  happy: '😊',
+  sad: '😢',
+  angry: '😠',
+  surprised: '😲',
+  fearful: '😨',
+  disgusted: '🤢',
+  neutral: '😐'
+} as const;
+
+// Intensity scaling for emoji size
+export const INTENSITY_SCALE = {
+  low: 'small',
+  medium: 'medium', 
+  high: 'large'
+} as const;
